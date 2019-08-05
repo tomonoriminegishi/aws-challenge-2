@@ -1,0 +1,344 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ALB and EC2 Instance Create
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  Stage:
+    Type: String
+    Default: "dev"
+
+  VPCCIDR:
+    Type: String
+    Default: "22.0.0.0/16"
+
+  EC2InstanceAMI:
+    Type: String
+    Default: "ami-0c3fd0f5d33134a76"
+
+Resources:
+  # ------------------------------------------------------------#
+  #  VPC
+  # ------------------------------------------------------------#
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: You are careful. But there is no problem here.
+
+  # ------------------------------------------------------------#
+  #  Subnet
+  # ------------------------------------------------------------#
+  PublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      CidrBlock: !Join
+        - "."
+        - - !Select [0, !Split [".", !Ref VPCCIDR]]
+          - !Select [1, !Split [".", !Ref VPCCIDR]]
+          - "10"
+          - "0/24"
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: there is no problem here.
+
+  PublicSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: ap-northeast-1c
+      CidrBlock: !Join
+        - "."
+        - - !Select [0, !Split [".", !Ref VPCCIDR]]
+          - !Select [1, !Split [".", !Ref VPCCIDR]]
+          - "20"
+          - "0/24"
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: there is no problem here.
+
+  PublicSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: ap-northeast-1d
+      CidrBlock: !Join
+        - "."
+        - - !Select [0, !Split [".", !Ref VPCCIDR]]
+          - !Select [1, !Split [".", !Ref VPCCIDR]]
+          - "30"
+          - "0/24"
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: there is no problem here.
+
+  # ------------------------------------------------------------#
+  #  RouteTable
+  # ------------------------------------------------------------#
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: Did you think there was a problem here. But there is no problem here.
+
+  PublicRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
+  # ------------------------------------------------------------#
+  #  InternetGateway
+  # ------------------------------------------------------------#
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: This is the Internet Gateway. just Internet Gateway.hahaha.
+
+  InternetGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # ------------------------------------------------------------#
+  #  SecurityGroup for ALB
+  # ------------------------------------------------------------#
+  ALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: "-"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: vol.1
+
+  # ------------------------------------------------------------#
+  #  SecurityGroup for Web
+  # ------------------------------------------------------------#
+  WebSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: "-"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: vol.1
+
+  # ------------------------------------------------------------#
+  #  Target Group
+  # ------------------------------------------------------------#
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      VpcId: !Ref VPC
+      Protocol: HTTP
+      Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/index.html"
+      HealthCheckPort: "traffic-port"
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 10
+      Matcher:
+        HttpCode: 200
+      TargetGroupAttributes:
+        - Key: "deregistration_delay.timeout_seconds"
+          Value: 300
+        - Key: "stickiness.enabled"
+          Value: false
+        - Key: "stickiness.type"
+          Value: lb_cookie
+        - Key: "stickiness.lb_cookie.duration_seconds"
+          Value: 86400
+      Targets:
+        - Id: !Ref EC2Instance
+          Port: 80
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: I feel something close.
+
+  # ------------------------------------------------------------#
+  #  ALB
+  # ------------------------------------------------------------#
+  ALB:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Scheme: "internet-facing"
+      LoadBalancerAttributes:
+        - Key: "deletion_protection.enabled"
+          Value: false
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 60
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: Oh. Something smells.
+
+  ALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  ALBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: text/html
+            MessageBody: '<html lang="ja"><head><title></title><link rel="stylesheet" href="https://s3.amazonaws.com/exampleloadbalancer-net/demo_site_asset/css/styles.css"></head><body style ="background-color: #232f3e;"><div class="container" ><div class="jumbotron text-center"><h2 class="display-1 text-center" style="color:#232f3e;">503 Service Unavailable</h2><h2 class="display-4 text-center" style="color:#232f3e;margin-bottom:50px">error!error!errror!</h2> <iframe src="https://giphy.com/embed/lXiRzPb8C5JTJcfPq" width="480" height="264" frameBorder="0" class="giphy-embed" allowFullScreen></iframe><p><a href="https://giphy.com/gifs/customer-service-help-desk-call-center-lXiRzPb8C5JTJcfPq">via GIPHY</a></p></div></div></body></html>'
+            StatusCode: 503
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "*"
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+
+  # ------------------------------------------------------------#
+  #  IAM Role for EC2
+  # ------------------------------------------------------------#
+  EC2IAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${Stage}-aws-challenge-1-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+
+  EC2InstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: EC2IAMRole
+      InstanceProfileName: !Sub "${Stage}-aws-challenge-1-profile"
+
+  # ------------------------------------------------------------#
+  #  EC2
+  # ------------------------------------------------------------#
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !Ref EC2InstanceAMI
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      DisableApiTermination: false
+      EbsOptimized: false
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+      SubnetId: !Ref PublicSubnet1
+      UserData: !Base64 |
+        #!/bin/bash
+        sudo yum update -y
+        sudo yum install -y httpd
+        sudo usermod -a -G apache ec2-user
+        sudo chown -R ec2-user:apache /var/www
+        sudo chmod 2775 /var/www
+        sudo find /var/www -type d -exec chmod 2775 {} \;
+        sudo find /var/www -type f -exec chmod 0664 {} \;
+        cd /var/www/html
+        touch index.html
+        echo '<!DOCTYPE html><html lang="ja"><head><title>AWS Challenge!</title><meta name="description" content=""><meta name="keywords" content=""><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><meta name="format-detection" content="telephone=no"> <meta http-equiv="X-UA-Compatible" content="IE=edge"><link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.2/animate.min.css" rel="stylesheet" type="text/css"><style>:root{--c-dark-r: 73;--c-dark-g: 73;--c-dark-b: 73;--c-prim-r: 0;--c-prim-g: 114;--c-prim-b: 188;--c-high-r: 227;--c-high-g: 0;--c-high-b: 0;--c-info-r: 0;--c-info-g: 167;--c-info-b: 32;}html,body{height: 100%;}body{font-size: 16px;font-family: "メイリオ", "Meiryo", "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans Japanese", "游ゴシック Medium", "Yu Gothic Medium", "ＭＳ Ｐゴシック", "MS PGothic", "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", "Osaka", sans-serif; -webkit-font-smoothing: antialiased; /* This needs to be set or some font faced fonts look bold on Mac in Chrome/Webkit based browsers. */-moz-osx-font-smoothing: grayscale; /* Fixes font bold issue in Firefox version 25+ on Mac */color: rgba(var(--c-dark-r), var(--c-dark-g), var(--c-dark-b), 1);}body, h1, h2, h3, h4, h5, h6, ul, dl, dd, em, figure{margin: 0;padding: 0;font-style: normal;}body{display: grid; height: 100vh; margin: 0; place-items: center center;}figure{text-align: center;}figcaption{font-size: 40px; padding-bottom: 44px;}figcaption strong{display: block;}figcaption small{display: block;}figure svg{fill: #2196F3;width: 250px;height: auto;}</style></head><body><main><article> <figure> <figcaption> <strong>Congratulations!</strong> <small>次回、技術書典7にてさらなる謎が現る！挑戦お待ちしております！</small> </figcaption> <svg class="animated bounceIn" xmlns="http://www.w3.org/2000/svg" width="115.625" height="123.31" viewBox="0 0 115.625 123.31"><defs></defs><path d="M112.325,69.062a22.958,22.958,0,0,0,3.3-12,20.966,20.966,0,0,0-20.668-20.62H86.165a30.791,30.791,0,0,0,2.144-11.2C88.285,7.684,79.228,0,65.353,0c-14.839,0-14,22.86-17.3,26.16-5.468,5.468-11.948,15.995-16.573,20.09H7.708A7.7,7.7,0,0,0,0,53.959v57.813a7.7,7.7,0,0,0,7.708,7.708H23.125a7.727,7.727,0,0,0,7.467-5.781c10.719.241,18.091,9.611,42.83,9.611H78.77c18.572,0,26.979-9.491,27.2-22.957a23.18,23.18,0,0,0,4.167-16.139A22.355,22.355,0,0,0,112.325,69.062ZM97.439,82.022c3.035,5.083.313,11.9-3.348,13.875,1.855,11.755-4.24,15.874-12.791,15.874H72.194c-17.247,0-28.425-9.106-41.336-9.106V57.813h2.626c6.841,0,16.38-17.079,22.764-23.486,6.841-6.841,4.553-18.211,9.106-22.764,11.394,0,11.394,7.949,11.394,13.658,0,9.443-6.841,13.658-6.841,22.764H94.958a9.4,9.4,0,0,1,9.106,9.106c.024,4.553-3.083,9.106-5.372,9.106,3.252,3.541,3.951,10.912-1.253,15.826ZM21.2,104.063a5.781,5.781,0,1,1-5.781-5.781A5.767,5.767,0,0,1,21.2,104.063Z" transform="translate(0 0)"/></svg> </figure></article><article style="text-align:center;margin-top:100px"><a href="https://twitter.com/ginban22?ref_src=twsrc%5Etfw" class="twitter-follow-button" data-size="large" data-show-count="false">Follow @ginban22</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script><br>サークル名『<a href="https://devmaga.booth.pm/">六木本未来ラボ</a>』</article> </main></body></html>' >> index.html
+        sudo systemctl start httpd
+        sudo systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: aws-challenge
+        - Key: aws-challenge
+          Value: You can not access in ec2.
+
+# ------------------------------------------------------------#
+# Output Parameters
+# ------------------------------------------------------------#
+Outputs:
+  Endpoint:
+    Description: "here we go! It is the beginning of a fun time."
+    Value: !Join 
+      - ""
+      - - "http://"
+        - !GetAtt ALB.DNSName
