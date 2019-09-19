@@ -1,4 +1,4 @@
-# aws-challenge-1
+# aws-challenge-2
 ## aws-challengeとは
 「aws-challenge」とは、 **AWS CloudFormation** や **Serverless Framework** を用いて構築されたAWS環境の不具合を見つけ解決しながらAWSに慣れ親しんでもらうことを目的とした学習課題です。
 
@@ -35,7 +35,7 @@ EC2の設定が原因なのか？
 ## 環境構築方法
 AWS CloudFormationでスタック作成をします。
 
-テンプレートのファイルのアップロードからaws-challenge1.yamlをアップロードします。
+テンプレートのファイルのアップロードからaws-challenge.yamlをアップロードします。
 
 ![スタック作成_censored](https://user-images.githubusercontent.com/11880332/62437901-1a82fe00-b780-11e9-80c7-772f8800138a.jpg)
 
@@ -73,7 +73,7 @@ AWS CloudFormationでデプロイが完了すると出力タブにURLが払い�
 
 構築された環境の不具合を修正することにより、正常な画面が表示されます。
 
-aws-challenge1.yamlを修正してもいいですし、AWSコンソールに入って調べてもかまいません。
+aws-challenge.yamlを修正してもいいですし、AWSコンソールに入って調べてもかまいません。
 
 解き方は自由です。
 
